@@ -223,13 +223,13 @@ public partial class MainPage : ContentPage
 #if WINDOWS
         string safeAppDir = _appDir.TrimEnd('\\');
 
-        // HARİKA DOKUNUŞ: Kendimizi Smart TV olarak gösteriyoruz! (player_client=tv)
         // Bu sayede YouTube bot koruması sormaz ve kaliteyi 360p ile sınırlandırmaz.
-        string fastArgs = $"--newline --no-color --no-warnings -N 16 --http-chunk-size 10M " +
-                          $"--no-overwrites --continue --windows-filenames " +
-                          $"--sponsorblock-remove all --no-write-info-json " +
-                          $"--clean-info-json --lazy-playlist " +
-                          $"--ffmpeg-location \"{safeAppDir}\"";
+        string fastArgs = $"-i --newline --no-color --no-warnings -N 16 --http-chunk-size 10M " +
+                           $"--extractor-args \"youtube:player_client=android,web\" " +
+                           $"--no-overwrites --continue --windows-filenames " +
+                           $"--sponsorblock-remove all --no-write-info-json " +
+                           $"--no-write-playlist-metafiles --clean-info-json --lazy-playlist " +
+                           $"--ffmpeg-location \"{safeAppDir}\"";
 
         string outputTemplate = $"-o \"{_downloadDir}\\%(playlist_title|Tekli_Indirmeler)s\\%(title)s.%(ext)s\"";
         string modeArgs = "";
