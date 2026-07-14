@@ -1,0 +1,81 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="ytDownloader.MainPage"
+             BackgroundColor="#1E1E1E">
+
+    <!-- Ana düzeni iki sütun olarak ayarladık (Masaüstüne uygun) -->
+    <Grid RowDefinitions="Auto, *" ColumnDefinitions="*, *" Padding="30" ColumnSpacing="30" RowSpacing="20">
+
+        <!-- Üst Başlık -->
+        <VerticalStackLayout Grid.Row="0" Grid.ColumnSpan="2" Spacing="5" HorizontalOptions="Center">
+            <Label Text="Youtube İndirici Pro" FontSize="32" FontAttributes="Bold" TextColor="#00ADB5" HorizontalOptions="Center" />
+            <Label x:Name="StatusLabel" Text="Sistem başlatılıyor..." FontSize="13" TextColor="#B0B0B0" HorizontalOptions="Center" />
+        </VerticalStackLayout>
+
+        <!-- SOL SÜTUN: Video Önizleme -->
+        <Border Grid.Row="1" Grid.Column="0" BackgroundColor="#2D2D2D" Stroke="#00ADB5" StrokeThickness="2" Padding="15">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="10" />
+            </Border.StrokeShape>
+            <VerticalStackLayout Spacing="15" VerticalOptions="Center">
+                <Label Text="Video Bilgisi" TextColor="#B0B0B0" FontAttributes="Bold" FontSize="16" HorizontalOptions="Center"/>
+
+                <!-- Oynatıcı kaldırıldı, yerine büyük kapak resmi eklendi -->
+                <Image x:Name="ThumbnailImage" HeightRequest="250" Aspect="AspectFit" IsVisible="True" Source="dotnet_bot.png" />
+
+                <Label x:Name="VideoTitleLabel" Text="Link yapıştırıp BUL butonuna basın." TextColor="White" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+
+                <!-- Yeni Test Et Butonu -->
+                <Button x:Name="TestVideoBtn" 
+                        Text="YOUTUBE'DA TEST ET" 
+                        IsVisible="False" 
+                        BackgroundColor="#393E46" 
+                        TextColor="#00ADB5" 
+                        FontAttributes="Bold" 
+                        CornerRadius="8"
+                        Clicked="OnTestVideoClicked"/>
+            </VerticalStackLayout>
+        </Border>
+
+        <!-- SAĞ SÜTUN: Ayarlar ve İndirme Kontrolleri -->
+        <VerticalStackLayout Grid.Row="1" Grid.Column="1" Spacing="25" VerticalOptions="Center">
+
+            <!-- Link Girişi -->
+            <Grid ColumnDefinitions="*, Auto" ColumnSpacing="10">
+                <Entry x:Name="UrlEntry" Grid.Column="0" Placeholder="YouTube Linkini Yapıştırın..." TextColor="White" BackgroundColor="#393E46" HeightRequest="50"/>
+                <Button x:Name="FetchInfoBtn" Grid.Column="1" Text="BUL" FontAttributes="Bold" BackgroundColor="#00ADB5" TextColor="White" WidthRequest="80" Clicked="OnFetchInfoClicked" />
+            </Grid>
+
+            <!-- İndirme Klasörü Seçimi -->
+            <VerticalStackLayout Spacing="5">
+                <Label Text="İndirme Konumu:" TextColor="#B0B0B0" FontSize="13" />
+                <Grid ColumnDefinitions="*, Auto" ColumnSpacing="10">
+                    <Entry x:Name="FolderEntry" Grid.Column="0" IsReadOnly="True" TextColor="#AAAAAA" BackgroundColor="#393E46" HeightRequest="45" />
+                    <Button Text="SEÇ" Grid.Column="1" FontAttributes="Bold" BackgroundColor="#555555" TextColor="White" WidthRequest="80" Clicked="OnSelectFolderClicked" />
+                </Grid>
+            </VerticalStackLayout>
+
+            <!-- Format Seçimi -->
+            <HorizontalStackLayout Spacing="20" HorizontalOptions="Center">
+                <RadioButton x:Name="RadioMp3" GroupName="Format" Content="MP3 (Ses)" IsChecked="True" TextColor="White" CheckedChanged="OnFormatChanged" />
+                <RadioButton x:Name="RadioMp4" GroupName="Format" Content="MP4 (Video)" TextColor="White" CheckedChanged="OnFormatChanged" />
+            </HorizontalStackLayout>
+
+            <!-- Sadece Kalite Seçimi Kaldı xox -->
+            <VerticalStackLayout Spacing="10" HorizontalOptions="Center" VerticalOptions="Center">
+                <Label Text="Kalite Seçimi:" TextColor="#B0B0B0" HorizontalOptions="Center"/>
+                <Picker x:Name="QualityPicker" TextColor="White" BackgroundColor="#393E46" WidthRequest="180" HeightRequest="45" />
+            </VerticalStackLayout>
+
+            <!-- İndirme Butonu xox -->
+            <Button x:Name="DownloadBtn" Text="İNDİRMEYİ BAŞLAT" FontAttributes="Bold" BackgroundColor="#00ADB5" TextColor="White" CornerRadius="8" HeightRequest="55" Clicked="OnDownloadClicked" />
+            <!-- İlerleme Çubuğu -->
+            <VerticalStackLayout x:Name="ProgressContainer" Spacing="10" IsVisible="False">
+                <ProgressBar x:Name="DownloadProgressBar" Progress="0" ProgressColor="#00ADB5" HeightRequest="10" />
+                <Label x:Name="ProgressText" Text="Hazırlanıyor..." TextColor="#B0B0B0" FontSize="12" HorizontalOptions="Center" />
+            </VerticalStackLayout>
+
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>
