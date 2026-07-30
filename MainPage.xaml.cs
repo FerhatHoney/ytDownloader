@@ -1,4 +1,6 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -10,6 +12,29 @@ using System.Runtime.InteropServices;
 
 namespace ytDownloader;
 
+public class PlaylistItem : INotifyPropertyChanged
+{
+    public int Index { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Id { get; set; } = string.Empty;
+    public string Thumbnail => $"https://img.youtube.com/vi/{Id}/mqdefault.jpg";
+
+    private bool _isSelected = true;
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected != value)
+            {
+                _isSelected = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSelected)));
+            }
+        }
+    }
+    public event PropertyChangedEventHandler? PropertyChanged;
+}
+
 public partial class MainPage : ContentPage
 {
     private readonly string _appDir;
@@ -17,7 +42,13 @@ public partial class MainPage : ContentPage
     private string _downloadDir;
     private string _safeAppDir;
     private string _lastPastedLink = string.Empty;
+    private string _currentVideoUrl = string.Empty;
     private bool _isInitializing = true;
+
+    private Process? _currentDownloadProcess;
+    private bool _isCancelled = false;
+
+    private ObservableCollection<PlaylistItem> _playlistItems = new();
 
 #if WINDOWS
     [DllImport("user32.dll")]
@@ -78,49 +109,53 @@ public partial class MainPage : ContentPage
         switch (ThemePicker.SelectedIndex)
         {
             case 0:
-                Resources["BgColor"] = Color.FromArgb("#F5F5F5");
+                Resources["BgColor"] = Color.FromArgb("#F3F4F6");
                 Resources["PanelBgColor"] = Color.FromArgb("#FFFFFF");
-                Resources["TextColor"] = Color.FromArgb("#000000");
-                Resources["SubTextColor"] = Color.FromArgb("#555555");
-                Resources["EntryBgColor"] = Color.FromArgb("#EAEAEA");
-                Resources["BorderColor"] = Color.FromArgb("#DDDDDD");
+                Resources["CardBgColor"] = Color.FromArgb("#F9FAFB");
+                Resources["TextColor"] = Color.FromArgb("#111827");
+                Resources["SubTextColor"] = Color.FromArgb("#6B7280");
+                Resources["EntryBgColor"] = Color.FromArgb("#E5E7EB");
+                Resources["BorderColor"] = Color.FromArgb("#D1D5DB");
                 break;
             case 2:
                 Resources["BgColor"] = Color.FromArgb("#000000");
                 Resources["PanelBgColor"] = Color.FromArgb("#0A0A0A");
+                Resources["CardBgColor"] = Color.FromArgb("#111111");
                 Resources["TextColor"] = Color.FromArgb("#FFFFFF");
-                Resources["SubTextColor"] = Color.FromArgb("#999999");
-                Resources["EntryBgColor"] = Color.FromArgb("#111111");
-                Resources["BorderColor"] = Color.FromArgb("#222222");
+                Resources["SubTextColor"] = Color.FromArgb("#9CA3AF");
+                Resources["EntryBgColor"] = Color.FromArgb("#1A1A1A");
+                Resources["BorderColor"] = Color.FromArgb("#262626");
                 break;
             case 3:
                 Resources["BgColor"] = Color.FromArgb("#0D0D0D");
                 Resources["PanelBgColor"] = Color.FromArgb("#121212");
+                Resources["CardBgColor"] = Color.FromArgb("#1A1A1A");
                 Resources["TextColor"] = Color.FromArgb("#00FF41");
                 Resources["SubTextColor"] = Color.FromArgb("#008F11");
                 Resources["EntryBgColor"] = Color.FromArgb("#1A1A1A");
                 Resources["BorderColor"] = Color.FromArgb("#008F11");
                 break;
             default:
-                Resources["BgColor"] = Color.FromArgb("#1E1E1E");
-                Resources["PanelBgColor"] = Color.FromArgb("#2A2A2A");
-                Resources["TextColor"] = Color.FromArgb("#FFFFFF");
-                Resources["SubTextColor"] = Color.FromArgb("#CCCCCC");
-                Resources["EntryBgColor"] = Color.FromArgb("#333333");
-                Resources["BorderColor"] = Color.FromArgb("#444444");
+                Resources["BgColor"] = Color.FromArgb("#18181B");
+                Resources["PanelBgColor"] = Color.FromArgb("#27272A");
+                Resources["CardBgColor"] = Color.FromArgb("#3F3F46");
+                Resources["TextColor"] = Color.FromArgb("#F9FAFB");
+                Resources["SubTextColor"] = Color.FromArgb("#A1A1AA");
+                Resources["EntryBgColor"] = Color.FromArgb("#3F3F46");
+                Resources["BorderColor"] = Color.FromArgb("#52525B");
                 break;
         }
 
         string accentHex = ColorPicker.SelectedIndex switch
         {
-            1 => "#00ADB5",
-            2 => "#1DB954",
-            3 => "#8A2BE2",
-            4 => "#FF8C00",
-            5 => "#FF69B4",
-            6 => "#1E90FF",
-            7 => "#FFD700",
-            _ => "#E50914"
+            1 => "#06B6D4",
+            2 => "#10B981",
+            3 => "#8B5CF6",
+            4 => "#F97316",
+            5 => "#EC4899",
+            6 => "#3B82F6",
+            7 => "#EAB308",
+            _ => "#EF4444"
         };
 
         if (ThemePicker.SelectedIndex == 3 && ColorPicker.SelectedIndex == 0)
@@ -134,6 +169,21 @@ public partial class MainPage : ContentPage
         SettingsPanel.IsVisible = !SettingsPanel.IsVisible;
     }
 
+    // YENİ: Playlist Göster/Gizle (+ / -) Butonu Komutu
+    private void OnTogglePlaylistClicked(object? sender, EventArgs e)
+    {
+        if (PlaylistContentContainer.IsVisible)
+        {
+            PlaylistContentContainer.IsVisible = false;
+            TogglePlaylistBtn.Text = "➕";
+        }
+        else
+        {
+            PlaylistContentContainer.IsVisible = true;
+            TogglePlaylistBtn.Text = "➖";
+        }
+    }
+
     private void OnDefaultQualityChanged(object? sender, EventArgs e)
     {
         if (_isInitializing) return;
@@ -144,10 +194,7 @@ public partial class MainPage : ContentPage
 
     private void OnFormatChanged(object? sender, CheckedChangedEventArgs e)
     {
-        if (QualityPicker != null)
-        {
-            LoadQualityOptions(RadioMp3?.IsChecked ?? true);
-        }
+        if (QualityPicker != null) LoadQualityOptions(RadioMp3?.IsChecked ?? true);
     }
 
     private void LoadQualityOptions(bool isMp3)
@@ -157,20 +204,47 @@ public partial class MainPage : ContentPage
 
         if (isMp3)
         {
-            QualityPicker.Items.Add("320 Kbps (Yüksek)");
-            QualityPicker.Items.Add("192 Kbps (Standart)");
-            QualityPicker.Items.Add("128 Kbps (Düşük)");
+            QualityPicker.Items.Add("320 Kbps");
+            QualityPicker.Items.Add("192 Kbps");
+            QualityPicker.Items.Add("128 Kbps");
             QualityPicker.SelectedIndex = Preferences.Default.Get("DefaultAudio", 0);
         }
         else
         {
-            QualityPicker.Items.Add("En İyi (Maksimum)");
+            QualityPicker.Items.Add("En İyi (Max)");
             QualityPicker.Items.Add("2160p (4K)");
             QualityPicker.Items.Add("1440p (2K)");
             QualityPicker.Items.Add("1080p (FHD)");
             QualityPicker.Items.Add("720p (HD)");
             QualityPicker.Items.Add("480p (SD)");
             QualityPicker.SelectedIndex = Preferences.Default.Get("DefaultVideo", 0);
+        }
+    }
+
+    private async void OnPasteClicked(object? sender, EventArgs e)
+    {
+        if (Clipboard.Default.HasText)
+        {
+            string? text = await Clipboard.Default.GetTextAsync();
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                UrlEntry.Text = text.Trim();
+                await FetchVideoInfoAsync(text.Trim());
+            }
+        }
+    }
+
+    private async void OnThumbnailTapped(object? sender, TappedEventArgs e)
+    {
+        if (!string.IsNullOrEmpty(_currentVideoUrl)) await Launcher.Default.OpenAsync(_currentVideoUrl);
+    }
+
+    private void OnSelectAllChanged(object? sender, CheckedChangedEventArgs e)
+    {
+        bool isChecked = e.Value;
+        foreach (var item in _playlistItems)
+        {
+            item.IsSelected = isChecked;
         }
     }
 
@@ -293,10 +367,7 @@ public partial class MainPage : ContentPage
     private void OnOpenFolderClicked(object? sender, EventArgs e)
     {
 #if WINDOWS
-        if (Directory.Exists(_downloadDir))
-        {
-            Process.Start("explorer.exe", _downloadDir);
-        }
+        if (Directory.Exists(_downloadDir)) Process.Start("explorer.exe", _downloadDir);
 #endif
     }
 
@@ -313,12 +384,24 @@ public partial class MainPage : ContentPage
         FetchInfoBtn.IsEnabled = false;
         FetchInfoBtn.Text = "...";
 
+        _currentVideoUrl = link;
+        bool isPlaylist = link.Contains("list=");
+
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            PlaylistSelectionBorder.IsVisible = false;
+            PlaylistCountLabel.Text = "Taranıyor...";
+        });
+
         await Task.Run(() =>
         {
 #if WINDOWS
             try
             {
-                string arguments = $"--dump-json --playlist-items 1 --no-warnings \"{link}\"";
+                string arguments = isPlaylist
+                    ? $"--dump-json --flat-playlist --no-warnings \"{link}\""
+                    : $"--dump-json --playlist-end 1 --no-warnings \"{link}\"";
+
                 var processInfo = new ProcessStartInfo
                 {
                     FileName = _ytDlpPath,
@@ -336,28 +419,62 @@ public partial class MainPage : ContentPage
 
                 if (!string.IsNullOrEmpty(jsonOutput))
                 {
-                    using JsonDocument doc = JsonDocument.Parse(jsonOutput);
-                    JsonElement root = doc.RootElement;
+                    var lines = jsonOutput.Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
-                    string title = root.GetProperty("title").GetString() ?? "Bilinmeyen Başlık";
-                    string thumbnail = root.GetProperty("thumbnail").GetString() ?? string.Empty;
-
-                    string durationText = "--:--";
-                    if (root.TryGetProperty("duration_string", out JsonElement durationElement))
+                    if (isPlaylist)
                     {
-                        durationText = durationElement.GetString() ?? "--:--";
-                    }
-
-                    MainThread.BeginInvokeOnMainThread(() =>
-                    {
-                        VideoTitleLabel.Text = title;
-                        VideoDurationLabel.Text = $"⏱ Süre: {durationText}";
-                        if (!string.IsNullOrEmpty(thumbnail))
+                        var tempList = new List<PlaylistItem>();
+                        int index = 1;
+                        foreach (var line in lines)
                         {
-                            ThumbnailImage.Source = ImageSource.FromUri(new Uri(thumbnail));
+                            try
+                            {
+                                using JsonDocument doc = JsonDocument.Parse(line);
+                                JsonElement root = doc.RootElement;
+                                string id = root.GetProperty("id").GetString() ?? "";
+                                string title = root.GetProperty("title").GetString() ?? "Bilinmeyen Başlık";
+                                tempList.Add(new PlaylistItem { Index = index, Id = id, Title = title });
+                                index++;
+                            }
+                            catch { }
                         }
-                        TestVideoBtn.IsVisible = true;
-                    });
+
+                        MainThread.BeginInvokeOnMainThread(() =>
+                        {
+                            _playlistItems.Clear();
+                            foreach (var item in tempList) _playlistItems.Add(item);
+
+                            PlaylistCollectionView.ItemsSource = _playlistItems;
+                            PlaylistSelectionBorder.IsVisible = true;
+                            // Taranınca listeyi otomatik açık göster [-]
+                            PlaylistContentContainer.IsVisible = true;
+                            TogglePlaylistBtn.Text = "➖";
+                            PlaylistCountLabel.Text = $"({_playlistItems.Count} Kayıt)";
+
+                            if (_playlistItems.Count > 0)
+                            {
+                                VideoTitleLabel.Text = "Çoklu Oynatma Listesi Seçildi";
+                                ThumbnailImage.Source = ImageSource.FromUri(new Uri(_playlistItems[0].Thumbnail));
+                                VideoDurationLabel.Text = "⏱ Liste";
+                            }
+                        });
+                    }
+                    else
+                    {
+                        using JsonDocument doc = JsonDocument.Parse(lines[0]);
+                        JsonElement root = doc.RootElement;
+                        string title = root.TryGetProperty("title", out JsonElement tEl) ? tEl.GetString() ?? "Bilinmeyen Başlık" : "Bilinmeyen Başlık";
+                        string thumbnail = root.TryGetProperty("thumbnail", out JsonElement thEl) ? thEl.GetString() ?? "" : "";
+                        string durationText = "--:--";
+                        if (root.TryGetProperty("duration_string", out JsonElement durEl)) durationText = durEl.GetString() ?? "--:--";
+
+                        MainThread.BeginInvokeOnMainThread(() =>
+                        {
+                            VideoTitleLabel.Text = title;
+                            VideoDurationLabel.Text = $"⏱ {durationText}";
+                            if (!string.IsNullOrEmpty(thumbnail)) ThumbnailImage.Source = ImageSource.FromUri(new Uri(thumbnail));
+                        });
+                    }
                 }
             }
             catch { }
@@ -366,6 +483,23 @@ public partial class MainPage : ContentPage
 
         FetchInfoBtn.Text = "BUL";
         FetchInfoBtn.IsEnabled = true;
+    }
+
+    private void OnCancelClicked(object? sender, EventArgs e)
+    {
+        if (_currentDownloadProcess != null && !_currentDownloadProcess.HasExited)
+        {
+            _isCancelled = true;
+            try { _currentDownloadProcess.Kill(true); } catch { }
+
+            CurrentFileLabel.Text = "❌ İşlem iptal edildi.";
+            ProgressText.Text = "Kullanıcı durdurdu.";
+            ProgressText.TextColor = Colors.Red;
+
+            DownloadBtn.IsEnabled = true;
+            UrlEntry.IsEnabled = true;
+            CancelBtn.IsVisible = false;
+        }
     }
 
     private async void OnDownloadClicked(object? sender, EventArgs e)
@@ -384,26 +518,53 @@ public partial class MainPage : ContentPage
             return;
         }
 
+        bool isPlaylistDownload = PlaylistSelectionBorder.IsVisible;
+        string itemsArg = "";
+
+        if (isPlaylistDownload)
+        {
+            var selectedIndices = _playlistItems.Where(x => x.IsSelected).Select(x => x.Index).ToList();
+            if (selectedIndices.Count == 0)
+            {
+                await DisplayAlert("Uyarı", "Lütfen listeden indirilecek en az 1 video/şarkı seçin.", "Tamam");
+                return;
+            }
+            itemsArg = string.Join(",", selectedIndices);
+
+            // YENİLİK: İndirme başladığı an Playlist menüsünü EKRADAN GİZLE (Otomatik Minimize)
+            PlaylistContentContainer.IsVisible = false;
+            TogglePlaylistBtn.Text = "➕";
+        }
+
         bool isMp3 = RadioMp3?.IsChecked ?? true;
         string selectedQuality = QualityPicker?.SelectedItem?.ToString() ?? "";
+
+        _isCancelled = false;
         DownloadBtn.IsEnabled = false;
         UrlEntry.IsEnabled = false;
+        CancelBtn.IsVisible = true;
         ProgressContainer.IsVisible = true;
         DownloadProgressBar.Progress = 0;
-        ProgressText.Text = "Bağlantı kuruluyor...";
-        ProgressText.TextColor = (Color)Resources["TextColor"];
 
-        await Task.Run(() => StartDownload(link, isMp3, selectedQuality));
+        CurrentFileLabel.Text = "Bağlantı kuruluyor...";
+        ProgressText.Text = "Lütfen bekleyin...";
+        ProgressText.TextColor = (Color)Resources["SubTextColor"];
+
+        await Task.Run(() => StartDownload(link, isMp3, selectedQuality, isPlaylistDownload, itemsArg));
+
+        if (_isCancelled) return;
 
         DownloadBtn.IsEnabled = true;
         UrlEntry.IsEnabled = true;
-        ProgressText.Text = "İşlem Başarıyla Tamamlandı!";
+        CancelBtn.IsVisible = false;
+        CurrentFileLabel.Text = "✅ Tüm İşlemler Başarıyla Tamamlandı!";
+        ProgressText.Text = "İndirme Bitti!";
+        ProgressText.TextColor = (Color)Resources["AccentColor"];
 
         if (Preferences.Default.Get("AutoOpenFolder", false))
         {
 #if WINDOWS
-            if (Directory.Exists(_downloadDir))
-                Process.Start("explorer.exe", _downloadDir);
+            if (Directory.Exists(_downloadDir)) Process.Start("explorer.exe", _downloadDir);
 #endif
         }
         else
@@ -412,13 +573,14 @@ public partial class MainPage : ContentPage
         }
     }
 
-    private void StartDownload(string link, bool isMp3, string qualityString)
+    private void StartDownload(string link, bool isMp3, string qualityString, bool isPlaylistDownload, string itemsArg)
     {
 #if WINDOWS
         string safeAppDir = _appDir.TrimEnd('\\');
         string fastArgs = "";
 
-        // KUSURSUZ DOSYA İSİMLENDİRME (Üzerine yazmayı ve orijinal videoyu silmeyi önler)
+        string playlistArgs = isPlaylistDownload ? $"--yes-playlist --playlist-items {itemsArg}" : "--no-playlist";
+
         string fileSuffix = "";
         if (isMp3)
         {
@@ -431,14 +593,21 @@ public partial class MainPage : ContentPage
             else fileSuffix = Regex.Match(qualityString, @"\d{3,4}").Value + "p";
         }
 
-        string outputTemplate = $"-o \"{_downloadDir}\\%(playlist_title|Tekli_Indirmeler)s\\%(title)s ({fileSuffix}).%(ext)s\"";
+        string outputTemplate = "";
+        if (isPlaylistDownload)
+        {
+            outputTemplate = $"-o \"{_downloadDir}\\%(playlist_title|Playlist_İndirmeleri)s\\%(playlist_index)02d - %(title)s ({fileSuffix}).%(ext)s\"";
+        }
+        else
+        {
+            outputTemplate = $"-o \"{_downloadDir}\\Tekli_İndirmeler\\%(title)s ({fileSuffix}).%(ext)s\"";
+        }
 
         string modeArgs = "";
 
         if (isMp3)
         {
-            // MP3 HIZ GÜNCELLEMESİ (16 Parça)
-            fastArgs = $"--newline --no-color --no-warnings -N 16 --http-chunk-size 10M " +
+            fastArgs = $"--newline --no-color --no-warnings -N 16 --http-chunk-size 10M {playlistArgs} " +
                        $"--extractor-args \"youtube:player_client=android,web\" " +
                        $"--continue --windows-filenames " +
                        $"--sponsorblock-remove all --no-write-info-json " +
@@ -451,8 +620,7 @@ public partial class MainPage : ContentPage
         }
         else
         {
-            // MP4 HIZ GÜNCELLEMESİ (Yavaşlatan sleep kodları silindi, N=8 ile yüksek hız ayarlandı)
-            fastArgs = $"--newline --no-color --no-warnings -N 8 --http-chunk-size 5M " +
+            fastArgs = $"--newline --no-color --no-warnings -N 8 --http-chunk-size 5M {playlistArgs} " +
                        $"--continue --windows-filenames " +
                        $"--sponsorblock-remove all --no-write-info-json " +
                        $"--clean-info-json --lazy-playlist " +
@@ -461,7 +629,6 @@ public partial class MainPage : ContentPage
             string formatStr;
             if (qualityString.Contains("En İyi"))
             {
-                // WINDOWS MEDIA PLAYER KODEK ZORLAMASI (vcodec^=avc1 -> H.264)
                 formatStr = "bestvideo[vcodec^=avc1][ext=mp4]+bestaudio[ext=m4a]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best";
             }
             else
@@ -469,9 +636,6 @@ public partial class MainPage : ContentPage
                 string res = Regex.Match(qualityString, @"\d{3,4}").Value;
                 if (!string.IsNullOrEmpty(res))
                 {
-                    // 1. Hedef: İstenen çözünürlükte ve H.264(WMP) formatında MP4 bul.
-                    // 2. Hedef: Eğer H.264 yoksa (4K genelde yoktur) standart MP4 bul.
-                    // 3. Hedef: Hiçbir şey yoksa bulabildiğin en iyi yedeği indir. (Çökme engeli)
                     formatStr = $"bestvideo[vcodec^=avc1][height<={res}][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<={res}][ext=mp4]+bestaudio[ext=m4a]/best[height<={res}]/best";
                 }
                 else
@@ -479,7 +643,6 @@ public partial class MainPage : ContentPage
                     formatStr = "bestvideo[vcodec^=avc1][ext=mp4]+bestaudio[ext=m4a]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best";
                 }
             }
-
             modeArgs = $"-f \"{formatStr}\" --merge-output-format mp4 --embed-metadata";
         }
 
@@ -497,18 +660,61 @@ public partial class MainPage : ContentPage
             StandardOutputEncoding = System.Text.Encoding.UTF8
         };
 
-        using var process = new Process { StartInfo = processInfo };
+        _currentDownloadProcess = new Process { StartInfo = processInfo };
 
-        // YENİ PROFESYONEL ÖZELLİK: İNDİRME HIZI VE KALAN SÜREYİ OKUYAN GELİŞMİŞ REGEX
-        var regex = new Regex(@"\[download\]\s+([\d.]+)%(?:.*?at\s+([\d.\w]+/?s))?(?:.*?ETA\s+([\d:]+))?");
+        var regexProgress = new Regex(@"\[download\]\s+([\d.]+)%(?:.*?at\s+([\d.\w]+/?s))?(?:.*?ETA\s+([\d:]+))?");
+        var regexPlaylist = new Regex(@"\[download\] Downloading video (\d+) of (\d+)");
+        var regexDest = new Regex(@"\[download\] Destination:\s+(.+)$");
+        var regexAlready = new Regex(@"\[download\]\s+(.+?)\s+has already been downloaded");
+        var regexYtId = new Regex(@"\[youtube\]\s+([A-Za-z0-9_-]{11}):");
 
-        process.OutputDataReceived += (sender, e) =>
+        string currentVideoIndex = "";
+        string totalVideos = "";
+        string currentIcon = isMp3 ? "🎵" : "🎬";
+
+        _currentDownloadProcess.OutputDataReceived += (sender, e) =>
         {
+            if (_isCancelled) return;
             string outputLine = e.Data ?? string.Empty;
 
             if (!string.IsNullOrEmpty(outputLine))
             {
-                var match = regex.Match(outputLine);
+                var idMatch = regexYtId.Match(outputLine);
+                if (idMatch.Success && isPlaylistDownload)
+                {
+                    string currentId = idMatch.Groups[1].Value;
+                    var currentItem = _playlistItems.FirstOrDefault(x => x.Id == currentId);
+                    if (currentItem != null)
+                    {
+                        MainThread.BeginInvokeOnMainThread(() => {
+                            VideoTitleLabel.Text = currentItem.Title;
+                            ThumbnailImage.Source = ImageSource.FromUri(new Uri(currentItem.Thumbnail));
+                        });
+                    }
+                }
+
+                var pMatch = regexPlaylist.Match(outputLine);
+                if (pMatch.Success)
+                {
+                    currentVideoIndex = pMatch.Groups[1].Value;
+                    totalVideos = pMatch.Groups[2].Value;
+                }
+
+                var destMatch = regexDest.Match(outputLine);
+                if (destMatch.Success)
+                {
+                    string fileName = Path.GetFileName(destMatch.Groups[1].Value);
+                    MainThread.BeginInvokeOnMainThread(() => CurrentFileLabel.Text = $"⬇ {fileName}");
+                }
+
+                var alreadyMatch = regexAlready.Match(outputLine);
+                if (alreadyMatch.Success)
+                {
+                    string fileName = Path.GetFileName(alreadyMatch.Groups[1].Value);
+                    MainThread.BeginInvokeOnMainThread(() => CurrentFileLabel.Text = $"✅ Mevcut: {fileName}");
+                }
+
+                var match = regexProgress.Match(outputLine);
                 if (match.Success && double.TryParse(match.Groups[1].Value, NumberStyles.Any, CultureInfo.InvariantCulture, out double progress))
                 {
                     string speed = match.Groups[2].Success ? match.Groups[2].Value : "";
@@ -516,11 +722,16 @@ public partial class MainPage : ContentPage
 
                     MainThread.BeginInvokeOnMainThread(() =>
                     {
+                        if (_isCancelled) return;
                         DownloadProgressBar.Progress = progress / 100.0;
 
-                        string progressInfo = $"İndiriliyor: %{progress:F1}";
-                        if (!string.IsNullOrEmpty(speed)) progressInfo += $" | Hız: {speed}";
-                        if (!string.IsNullOrEmpty(eta)) progressInfo += $" | Kalan Süre: {eta}";
+                        string progressInfo = "";
+                        if (isPlaylistDownload && !string.IsNullOrEmpty(currentVideoIndex))
+                            progressInfo += $"[{currentIcon} {currentVideoIndex}/{totalVideos}] ";
+
+                        progressInfo += $"% {progress:F1}";
+                        if (!string.IsNullOrEmpty(speed)) progressInfo += $" | {speed}";
+                        if (!string.IsNullOrEmpty(eta)) progressInfo += $" | Kalan: {eta}";
 
                         ProgressText.Text = progressInfo;
                     });
@@ -529,38 +740,40 @@ public partial class MainPage : ContentPage
                 {
                     MainThread.BeginInvokeOnMainThread(() =>
                     {
+                        if (_isCancelled) return;
                         DownloadProgressBar.Progress = 1.0;
-                        ProgressText.Text = "Dönüştürülüyor ve kalite ayarlanıyor (Lütfen bekleyin)...";
+                        string prefix = (isPlaylistDownload && !string.IsNullOrEmpty(currentVideoIndex)) ? $"[{currentIcon} {currentVideoIndex}/{totalVideos}] " : "";
+                        ProgressText.Text = $"{prefix}İşleniyor ve birleştiriliyor...";
                     });
                 }
             }
         };
 
-        process.ErrorDataReceived += (sender, e) =>
+        _currentDownloadProcess.ErrorDataReceived += (sender, e) =>
         {
+            if (_isCancelled) return;
             string errorLine = e.Data ?? string.Empty;
             if (!string.IsNullOrEmpty(errorLine))
             {
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
-                    ProgressText.Text = $"UYARI/HATA: {errorLine}";
+                    ProgressText.Text = $"Uyarı: {errorLine}";
                 });
             }
         };
 
-        process.Start();
-        process.BeginOutputReadLine();
-        process.BeginErrorReadLine();
-        process.WaitForExit();
-#endif
-    }
-
-    private async void OnTestVideoClicked(object? sender, EventArgs e)
-    {
-        string link = UrlEntry.Text?.Trim() ?? string.Empty;
-        if (!string.IsNullOrEmpty(link))
+        try
         {
-            await Launcher.Default.OpenAsync(link);
+            _currentDownloadProcess.Start();
+            _currentDownloadProcess.BeginOutputReadLine();
+            _currentDownloadProcess.BeginErrorReadLine();
+            _currentDownloadProcess.WaitForExit();
         }
+        catch { }
+        finally
+        {
+            _currentDownloadProcess = null;
+        }
+#endif
     }
 }
