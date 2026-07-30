@@ -68,7 +68,6 @@ public partial class MainPage : ContentPage
     private void OnThemeOrColorChanged(object? sender, EventArgs e)
     {
         if (_isInitializing) return;
-
         Preferences.Default.Set("AppTheme", ThemePicker.SelectedIndex);
         Preferences.Default.Set("AppColor", ColorPicker.SelectedIndex);
         ApplyThemeAndColor();
@@ -166,6 +165,8 @@ public partial class MainPage : ContentPage
         else
         {
             QualityPicker.Items.Add("En İyi (Maksimum)");
+            QualityPicker.Items.Add("2160p (4K)");
+            QualityPicker.Items.Add("1440p (2K)");
             QualityPicker.Items.Add("1080p (FHD)");
             QualityPicker.Items.Add("720p (HD)");
             QualityPicker.Items.Add("480p (SD)");
@@ -303,7 +304,6 @@ public partial class MainPage : ContentPage
     {
         string link = UrlEntry.Text?.Trim() ?? string.Empty;
         if (string.IsNullOrEmpty(link)) return;
-
         _lastPastedLink = link;
         await FetchVideoInfoAsync(link);
     }
@@ -391,7 +391,6 @@ public partial class MainPage : ContentPage
         ProgressContainer.IsVisible = true;
         DownloadProgressBar.Progress = 0;
         ProgressText.Text = "Bağlantı kuruluyor...";
-
         ProgressText.TextColor = (Color)Resources["TextColor"];
 
         await Task.Run(() => StartDownload(link, isMp3, selectedQuality));
@@ -419,45 +418,69 @@ public partial class MainPage : ContentPage
         string safeAppDir = _appDir.TrimEnd('\\');
         string fastArgs = "";
 
+        // KUSURSUZ DOSYA İSİMLENDİRME (Üzerine yazmayı ve orijinal videoyu silmeyi önler)
+        string fileSuffix = "";
         if (isMp3)
         {
-            fastArgs = $"--newline --no-color --no-warnings -N 16 --http-chunk-size 10M " +
-                       $"--extractor-args \"youtube:player_client=android,web\" " +
-                       $"--no-overwrites --continue --windows-filenames " +
-                       $"--sponsorblock-remove all --no-write-info-json " +
-                       $"--clean-info-json --lazy-playlist " +
-                       $"--ffmpeg-location \"{safeAppDir}\"";
+            string kbpsNum = Regex.Match(qualityString, @"\d+").Value;
+            fileSuffix = $"Ses_{kbpsNum}K";
         }
         else
         {
-            fastArgs = $"--newline --no-color --no-warnings -N 4 " +
-                       $"--sleep-requests 1 --sleep-interval 2 " +
-                       $"--no-overwrites --continue --windows-filenames " +
-                       $"--sponsorblock-remove all --no-write-info-json " +
-                       $"--clean-info-json --lazy-playlist " +
-                       $"--ffmpeg-location \"{safeAppDir}\"";
+            if (qualityString.Contains("En İyi")) fileSuffix = "Maksimum";
+            else fileSuffix = Regex.Match(qualityString, @"\d{3,4}").Value + "p";
         }
 
-        string outputTemplate = $"-o \"{_downloadDir}\\%(playlist_title|Tekli_Indirmeler)s\\%(title)s.%(ext)s\"";
+        string outputTemplate = $"-o \"{_downloadDir}\\%(playlist_title|Tekli_Indirmeler)s\\%(title)s ({fileSuffix}).%(ext)s\"";
+
         string modeArgs = "";
 
         if (isMp3)
         {
+            // MP3 HIZ GÜNCELLEMESİ (16 Parça)
+            fastArgs = $"--newline --no-color --no-warnings -N 16 --http-chunk-size 10M " +
+                       $"--extractor-args \"youtube:player_client=android,web\" " +
+                       $"--continue --windows-filenames " +
+                       $"--sponsorblock-remove all --no-write-info-json " +
+                       $"--clean-info-json --lazy-playlist " +
+                       $"--ffmpeg-location \"{safeAppDir}\"";
+
             string kbps = Regex.Match(qualityString, @"\d+").Value;
             if (string.IsNullOrEmpty(kbps)) kbps = "192";
             modeArgs = $"-f bestaudio/best -x --audio-format mp3 --audio-quality {kbps}K --embed-metadata --embed-thumbnail";
         }
         else
         {
+            // MP4 HIZ GÜNCELLEMESİ (Yavaşlatan sleep kodları silindi, N=8 ile yüksek hız ayarlandı)
+            fastArgs = $"--newline --no-color --no-warnings -N 8 --http-chunk-size 5M " +
+                       $"--continue --windows-filenames " +
+                       $"--sponsorblock-remove all --no-write-info-json " +
+                       $"--clean-info-json --lazy-playlist " +
+                       $"--ffmpeg-location \"{safeAppDir}\"";
+
+            string formatStr;
             if (qualityString.Contains("En İyi"))
             {
-                modeArgs = "-f bv*+ba/b -S ext:mp4:m4a,vcodec:h264 --merge-output-format mp4 --embed-metadata";
+                // WINDOWS MEDIA PLAYER KODEK ZORLAMASI (vcodec^=avc1 -> H.264)
+                formatStr = "bestvideo[vcodec^=avc1][ext=mp4]+bestaudio[ext=m4a]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best";
             }
             else
             {
                 string res = Regex.Match(qualityString, @"\d{3,4}").Value;
-                modeArgs = $"-f bv*+ba/b -S res:{res},ext:mp4:m4a,vcodec:h264 --merge-output-format mp4 --embed-metadata";
+                if (!string.IsNullOrEmpty(res))
+                {
+                    // 1. Hedef: İstenen çözünürlükte ve H.264(WMP) formatında MP4 bul.
+                    // 2. Hedef: Eğer H.264 yoksa (4K genelde yoktur) standart MP4 bul.
+                    // 3. Hedef: Hiçbir şey yoksa bulabildiğin en iyi yedeği indir. (Çökme engeli)
+                    formatStr = $"bestvideo[vcodec^=avc1][height<={res}][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<={res}][ext=mp4]+bestaudio[ext=m4a]/best[height<={res}]/best";
+                }
+                else
+                {
+                    formatStr = "bestvideo[vcodec^=avc1][ext=mp4]+bestaudio[ext=m4a]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best";
+                }
             }
+
+            modeArgs = $"-f \"{formatStr}\" --merge-output-format mp4 --embed-metadata";
         }
 
         string arguments = $"{fastArgs} {modeArgs} {outputTemplate} \"{link}\"";
@@ -475,11 +498,12 @@ public partial class MainPage : ContentPage
         };
 
         using var process = new Process { StartInfo = processInfo };
-        var regex = new Regex(@"\[download\]\s+([\d.]+)%");
+
+        // YENİ PROFESYONEL ÖZELLİK: İNDİRME HIZI VE KALAN SÜREYİ OKUYAN GELİŞMİŞ REGEX
+        var regex = new Regex(@"\[download\]\s+([\d.]+)%(?:.*?at\s+([\d.\w]+/?s))?(?:.*?ETA\s+([\d:]+))?");
 
         process.OutputDataReceived += (sender, e) =>
         {
-            // Null başvuru (CS8602) uyarıları tamamen giderildi!
             string outputLine = e.Data ?? string.Empty;
 
             if (!string.IsNullOrEmpty(outputLine))
@@ -487,10 +511,18 @@ public partial class MainPage : ContentPage
                 var match = regex.Match(outputLine);
                 if (match.Success && double.TryParse(match.Groups[1].Value, NumberStyles.Any, CultureInfo.InvariantCulture, out double progress))
                 {
+                    string speed = match.Groups[2].Success ? match.Groups[2].Value : "";
+                    string eta = match.Groups[3].Success ? match.Groups[3].Value : "";
+
                     MainThread.BeginInvokeOnMainThread(() =>
                     {
                         DownloadProgressBar.Progress = progress / 100.0;
-                        ProgressText.Text = $"İndiriliyor: %{progress:F1}";
+
+                        string progressInfo = $"İndiriliyor: %{progress:F1}";
+                        if (!string.IsNullOrEmpty(speed)) progressInfo += $" | Hız: {speed}";
+                        if (!string.IsNullOrEmpty(eta)) progressInfo += $" | Kalan Süre: {eta}";
+
+                        ProgressText.Text = progressInfo;
                     });
                 }
                 else if (outputLine.Contains("[ExtractAudio]") || outputLine.Contains("[Merger]"))
@@ -507,7 +539,6 @@ public partial class MainPage : ContentPage
         process.ErrorDataReceived += (sender, e) =>
         {
             string errorLine = e.Data ?? string.Empty;
-
             if (!string.IsNullOrEmpty(errorLine))
             {
                 MainThread.BeginInvokeOnMainThread(() =>
