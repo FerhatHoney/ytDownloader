@@ -15,54 +15,64 @@
         <Color x:Key="BorderColor">#3D3D3D</Color>
     </ContentPage.Resources>
 
-    <!-- Maksimum genişlik daraltıldı, ferahlık için padding azaltıldı -->
     <ScrollView>
-        <VerticalStackLayout Padding="15,20" Spacing="12" MaximumWidthRequest="800" HorizontalOptions="Center">
+        <VerticalStackLayout Padding="15" Spacing="10" MaximumWidthRequest="850" HorizontalOptions="Center">
 
-            <!-- ÜST BİLGİ (HEADER) -->
-            <Grid ColumnDefinitions="*, Auto">
+            <!-- ÜST BİLGİ -->
+            <Grid ColumnDefinitions="*, Auto" Margin="0,0,0,5">
                 <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
-                    <Border BackgroundColor="{DynamicResource AccentColor}" WidthRequest="35" HeightRequest="35" Stroke="Transparent">
+                    <Border BackgroundColor="{DynamicResource AccentColor}" WidthRequest="36" HeightRequest="36" Stroke="Transparent">
                         <Border.StrokeShape>
                             <RoundRectangle CornerRadius="8"/>
                         </Border.StrokeShape>
-                        <Label Text="▶" FontSize="16" TextColor="White" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center"/>
+                        <Label Text="▶" FontSize="18" TextColor="White" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center"/>
                     </Border>
-                    <VerticalStackLayout VerticalOptions="Center" Spacing="0">
+                    <VerticalStackLayout VerticalOptions="Center" Spacing="-2">
                         <Label Text="Youtube İndirici" FontSize="18" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
-                        <Label Text="UI Pro Kompakt" FontSize="11" TextColor="{DynamicResource AccentColor}" FontAttributes="Bold" />
+                        <Label Text="UI Pro | Çoklu Motor" FontSize="11" TextColor="{DynamicResource AccentColor}" FontAttributes="Bold" />
                     </VerticalStackLayout>
                 </HorizontalStackLayout>
-                <Button Grid.Column="1" Text="⚙️ Ayarlar" BackgroundColor="{DynamicResource PanelBgColor}" TextColor="{DynamicResource TextColor}" CornerRadius="8" Clicked="OnSettingsClicked" Padding="15,0" HeightRequest="35" FontAttributes="Bold" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" FontSize="12"/>
+                <Button Grid.Column="1" Text="⚙️ Ayarlar" BackgroundColor="{DynamicResource PanelBgColor}" TextColor="{DynamicResource TextColor}" CornerRadius="8" Clicked="OnSettingsClicked" Padding="12,0" HeightRequest="36" FontAttributes="Bold" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" FontSize="12"/>
             </Grid>
 
-            <!-- AYARLAR KARTI (Sıkıştırılmış) -->
+            <!-- AYARLAR KARTI -->
             <Border x:Name="SettingsPanel" IsVisible="False" BackgroundColor="{DynamicResource PanelBgColor}" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" Padding="15">
                 <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="12" />
+                    <RoundRectangle CornerRadius="10" />
                 </Border.StrokeShape>
                 <VerticalStackLayout Spacing="10">
-                    <Label Text="🛠️ Uygulama Tercihleri" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" FontSize="14" />
+                    <Label Text="🛠️ Uygulama Tercihleri" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" FontSize="13" />
                     <BoxView HeightRequest="1" Color="{DynamicResource BorderColor}" />
 
                     <Grid ColumnDefinitions="*, *" ColumnSpacing="15">
-                        <VerticalStackLayout Spacing="8">
+                        <VerticalStackLayout Spacing="5">
                             <Grid ColumnDefinitions="*, Auto">
                                 <Label Text="Panodan Otomatik Algıla" TextColor="{DynamicResource SubTextColor}" FontSize="12" VerticalOptions="Center"/>
-                                <Switch x:Name="AutoPasteSwitch" Grid.Column="1" Scale="0.8" OnColor="{DynamicResource AccentColor}" />
+                                <Switch x:Name="AutoPasteSwitch" Grid.Column="1" Scale="0.75" OnColor="{DynamicResource AccentColor}" />
                             </Grid>
                             <Grid ColumnDefinitions="*, Auto">
                                 <Label Text="Algılayınca Öne Getir" TextColor="{DynamicResource SubTextColor}" FontSize="12" VerticalOptions="Center"/>
-                                <Switch x:Name="BringToFrontSwitch" Grid.Column="1" Scale="0.8" OnColor="{DynamicResource AccentColor}" />
+                                <Switch x:Name="BringToFrontSwitch" Grid.Column="1" Scale="0.75" OnColor="{DynamicResource AccentColor}" />
                             </Grid>
                             <Grid ColumnDefinitions="*, Auto">
                                 <Label Text="İndirme Bitince Klasörü Aç" TextColor="{DynamicResource SubTextColor}" FontSize="12" VerticalOptions="Center"/>
-                                <Switch x:Name="AutoOpenFolderSwitch" Grid.Column="1" Scale="0.8" OnColor="{DynamicResource AccentColor}" />
+                                <Switch x:Name="AutoOpenFolderSwitch" Grid.Column="1" Scale="0.75" OnColor="{DynamicResource AccentColor}" />
                             </Grid>
+                            <VerticalStackLayout Spacing="0" Margin="0,5,0,0">
+                                <Label Text="🎞️ Video Kodeki (MP4 İşleyici)" TextColor="{DynamicResource SubTextColor}" FontSize="11" FontAttributes="Bold"/>
+                                <Picker x:Name="CodecPicker" FontSize="11" BackgroundColor="{DynamicResource EntryBgColor}" TextColor="{DynamicResource TextColor}" SelectedIndexChanged="OnCodecChanged">
+                                    <Picker.Items>
+                                        <x:String>Otomatik (En İyisi)</x:String>
+                                        <x:String>H.264 (Geniş Uyum / WMP)</x:String>
+                                        <x:String>VP9 (Modern 4K Uyumlu)</x:String>
+                                        <x:String>AV1 (Yeni Nesil / Düşük Boyut)</x:String>
+                                    </Picker.Items>
+                                </Picker>
+                            </VerticalStackLayout>
                         </VerticalStackLayout>
 
-                        <Grid Grid.Column="1" ColumnDefinitions="*, *" RowDefinitions="Auto, Auto" ColumnSpacing="10" RowSpacing="10">
-                            <VerticalStackLayout Spacing="2">
+                        <Grid Grid.Column="1" ColumnDefinitions="*, *" RowDefinitions="Auto, Auto" ColumnSpacing="10" RowSpacing="5">
+                            <VerticalStackLayout Spacing="0">
                                 <Label Text="🎨 Tema" TextColor="{DynamicResource SubTextColor}" FontSize="11" FontAttributes="Bold" />
                                 <Picker x:Name="ThemePicker" FontSize="12" BackgroundColor="{DynamicResource EntryBgColor}" TextColor="{DynamicResource TextColor}" SelectedIndexChanged="OnThemeOrColorChanged">
                                     <Picker.Items>
@@ -73,7 +83,7 @@
                                     </Picker.Items>
                                 </Picker>
                             </VerticalStackLayout>
-                            <VerticalStackLayout Grid.Column="1" Spacing="2">
+                            <VerticalStackLayout Grid.Column="1" Spacing="0">
                                 <Label Text="✨ Vurgu Rengi" TextColor="{DynamicResource SubTextColor}" FontSize="11" FontAttributes="Bold" />
                                 <Picker x:Name="ColorPicker" FontSize="12" BackgroundColor="{DynamicResource EntryBgColor}" TextColor="{DynamicResource TextColor}" SelectedIndexChanged="OnThemeOrColorChanged">
                                     <Picker.Items>
@@ -89,7 +99,7 @@
                                 </Picker>
                             </VerticalStackLayout>
 
-                            <VerticalStackLayout Grid.Row="1" Spacing="2">
+                            <VerticalStackLayout Grid.Row="1" Spacing="0">
                                 <Label Text="🎵 Oto Ses" TextColor="{DynamicResource SubTextColor}" FontSize="11" FontAttributes="Bold"/>
                                 <Picker x:Name="DefaultAudioPicker" FontSize="12" BackgroundColor="{DynamicResource EntryBgColor}" TextColor="{DynamicResource TextColor}" SelectedIndexChanged="OnDefaultQualityChanged">
                                     <Picker.Items>
@@ -99,7 +109,7 @@
                                     </Picker.Items>
                                 </Picker>
                             </VerticalStackLayout>
-                            <VerticalStackLayout Grid.Row="1" Grid.Column="1" Spacing="2">
+                            <VerticalStackLayout Grid.Row="1" Grid.Column="1" Spacing="0">
                                 <Label Text="🎬 Oto Video" TextColor="{DynamicResource SubTextColor}" FontSize="11" FontAttributes="Bold"/>
                                 <Picker x:Name="DefaultVideoPicker" FontSize="12" BackgroundColor="{DynamicResource EntryBgColor}" TextColor="{DynamicResource TextColor}" SelectedIndexChanged="OnDefaultQualityChanged">
                                     <Picker.Items>
@@ -117,10 +127,10 @@
                 </VerticalStackLayout>
             </Border>
 
-            <!-- LİNK ARAMA KARTI -->
+            <!-- LİNK ARAMA -->
             <Border BackgroundColor="{DynamicResource PanelBgColor}" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" Padding="8">
                 <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="12" />
+                    <RoundRectangle CornerRadius="10" />
                 </Border.StrokeShape>
                 <Grid ColumnDefinitions="*, Auto, Auto" ColumnSpacing="8">
                     <Entry x:Name="UrlEntry" Placeholder="🔗 YoutTube linkini buraya yapıştırın..." 
@@ -132,15 +142,15 @@
                 </Grid>
             </Border>
 
-            <!-- VİDEO BİLGİ KARTI (KOMPAKT) -->
+            <!-- TEKLİ VİDEO BİLGİ KARTI VE İŞLEMLERİ -->
             <Border BackgroundColor="{DynamicResource CardBgColor}" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" Padding="10">
                 <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="12" />
+                    <RoundRectangle CornerRadius="10" />
                 </Border.StrokeShape>
                 <Grid ColumnDefinitions="Auto, *" ColumnSpacing="15">
-                    <Border Padding="0" WidthRequest="120" HeightRequest="68" BackgroundColor="#111" Stroke="Transparent">
+                    <Border Padding="0" WidthRequest="120" HeightRequest="68" BackgroundColor="#111" Stroke="Transparent" VerticalOptions="Start">
                         <Border.StrokeShape>
-                            <RoundRectangle CornerRadius="8" />
+                            <RoundRectangle CornerRadius="6" />
                         </Border.StrokeShape>
                         <Grid>
                             <Image x:Name="ThumbnailImage" Aspect="AspectFill" />
@@ -163,51 +173,63 @@
                             </Border>
                             <Label Text="(Önizlemek için kapağa tıklayın)" TextColor="{DynamicResource SubTextColor}" FontSize="10" VerticalOptions="Center" FontAttributes="Italic"/>
                         </HorizontalStackLayout>
+
+                        <!-- TEKLİ VİDEO İÇİN FORMAT VE ALTYAZI BUTONLARI -->
+                        <HorizontalStackLayout x:Name="SingleVideoExtrasPanel" Spacing="8" Margin="0,5,0,0" IsVisible="False">
+                            <Button x:Name="SingleSubtitleBtn" Text="💬 Altyazı" FontSize="10" BackgroundColor="{DynamicResource PanelBgColor}" TextColor="{DynamicResource TextColor}" Padding="8,0" HeightRequest="26" CornerRadius="4" Clicked="OnFetchSubtitleClicked"/>
+                            <Button x:Name="SingleFormatBtn" Text="⚙️ Özel Format" FontSize="10" BackgroundColor="{DynamicResource PanelBgColor}" TextColor="{DynamicResource TextColor}" Padding="8,0" HeightRequest="26" CornerRadius="4" Clicked="OnFetchItemFormatClicked"/>
+                            <Label x:Name="SingleStatusLabel" Text="" TextColor="{DynamicResource AccentColor}" FontSize="10" VerticalOptions="Center" FontAttributes="Bold" MaxLines="1" LineBreakMode="TailTruncation" />
+                        </HorizontalStackLayout>
                     </VerticalStackLayout>
                 </Grid>
             </Border>
 
-            <!-- YENİ: İNTERAKTİF VE KATLANABİLİR PLAYLIST SEÇİM MENÜSÜ -->
-            <Border x:Name="PlaylistSelectionBorder" IsVisible="False" BackgroundColor="{DynamicResource CardBgColor}" Stroke="{DynamicResource AccentColor}" StrokeThickness="1" Padding="15">
+            <!-- İNTERAKTİF PLAYLIST SEÇİM MENÜSÜ -->
+            <Border x:Name="PlaylistSelectionBorder" IsVisible="False" BackgroundColor="{DynamicResource CardBgColor}" Stroke="{DynamicResource AccentColor}" StrokeThickness="1" Padding="12">
                 <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="12"/>
+                    <RoundRectangle CornerRadius="10"/>
                 </Border.StrokeShape>
-                <VerticalStackLayout Spacing="10">
-                    <!-- Başlık ve + / - Butonu -->
+                <VerticalStackLayout Spacing="8">
+                    <!-- Başlık ve Kapatma Butonu -->
                     <Grid ColumnDefinitions="*, Auto">
                         <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
-                            <Label Text="📑 Oynatma Listesi" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center"/>
-                            <Label x:Name="PlaylistCountLabel" Text="(0 Video)" TextColor="{DynamicResource AccentColor}" FontSize="12" FontAttributes="Bold" VerticalOptions="Center"/>
+                            <Label Text="📑 Oynatma Listesi" TextColor="{DynamicResource TextColor}" FontSize="13" FontAttributes="Bold" VerticalOptions="Center"/>
+                            <Label x:Name="PlaylistCountLabel" Text="(0 Video)" TextColor="{DynamicResource AccentColor}" FontSize="11" FontAttributes="Bold" VerticalOptions="Center"/>
                         </HorizontalStackLayout>
-
-                        <!-- YENİ: KÜÇÜLTME BÜYÜTME BUTONU -->
-                        <Button x:Name="TogglePlaylistBtn" Grid.Column="1" Text="➖" FontSize="12" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" Padding="0" WidthRequest="30" HeightRequest="30" Clicked="OnTogglePlaylistClicked" />
+                        <Button x:Name="TogglePlaylistBtn" Grid.Column="1" Text="➖" FontSize="11" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" Padding="0" WidthRequest="25" HeightRequest="25" Clicked="OnTogglePlaylistClicked" />
                     </Grid>
 
-                    <!-- Katlanabilir Alan (İndirme Başlayınca veya Butona basılınca gizlenir) -->
-                    <VerticalStackLayout x:Name="PlaylistContentContainer" Spacing="10">
+                    <VerticalStackLayout x:Name="PlaylistContentContainer" Spacing="8">
                         <HorizontalStackLayout Spacing="5">
-                            <CheckBox x:Name="SelectAllCheckBox" IsChecked="True" CheckedChanged="OnSelectAllChanged" Color="{DynamicResource AccentColor}" Scale="0.8"/>
-                            <Label Text="Tümünü Seç / Seçimi Kaldır" TextColor="{DynamicResource SubTextColor}" VerticalOptions="Center" FontSize="12"/>
+                            <CheckBox x:Name="SelectAllCheckBox" IsChecked="True" CheckedChanged="OnSelectAllChanged" Color="{DynamicResource AccentColor}" Scale="0.75"/>
+                            <Label Text="Tümünü Seç / (Her videoyu farklı MP3/MP4 seçebilirsiniz)" TextColor="{DynamicResource SubTextColor}" VerticalOptions="Center" FontSize="11"/>
                         </HorizontalStackLayout>
 
-                        <!-- Liste boyutu ekrana göre esnek bırakıldı -->
-                        <Border Stroke="{DynamicResource BorderColor}" StrokeThickness="1" BackgroundColor="{DynamicResource EntryBgColor}" HeightRequest="180">
+                        <Border Stroke="{DynamicResource BorderColor}" StrokeThickness="1" BackgroundColor="{DynamicResource EntryBgColor}" HeightRequest="250">
                             <Border.StrokeShape>
-                                <RoundRectangle CornerRadius="8"/>
+                                <RoundRectangle CornerRadius="6"/>
                             </Border.StrokeShape>
                             <CollectionView x:Name="PlaylistCollectionView">
                                 <CollectionView.ItemTemplate>
                                     <DataTemplate>
-                                        <Grid ColumnDefinitions="Auto, Auto, *" Padding="8" ColumnSpacing="10">
-                                            <CheckBox IsChecked="{Binding IsSelected}" Color="{DynamicResource AccentColor}" VerticalOptions="Center" Scale="0.8"/>
+                                        <Grid ColumnDefinitions="Auto, Auto, *, Auto, Auto, Auto" Padding="5,8" ColumnSpacing="8">
+                                            <CheckBox IsChecked="{Binding IsSelected}" Color="{DynamicResource AccentColor}" VerticalOptions="Center" Scale="0.75"/>
+
                                             <Border Grid.Column="1" Stroke="Transparent" Padding="0" WidthRequest="60" HeightRequest="34" VerticalOptions="Center">
                                                 <Border.StrokeShape>
                                                     <RoundRectangle CornerRadius="4"/>
                                                 </Border.StrokeShape>
                                                 <Image Source="{Binding Thumbnail}" Aspect="AspectFill" />
                                             </Border>
-                                            <Label Grid.Column="2" Text="{Binding Title}" VerticalOptions="Center" MaxLines="2" LineBreakMode="TailTruncation" TextColor="{DynamicResource TextColor}" FontSize="12" FontAttributes="Bold" />
+
+                                            <VerticalStackLayout Grid.Column="2" VerticalOptions="Center" Spacing="1">
+                                                <Label Text="{Binding Title}" MaxLines="1" LineBreakMode="TailTruncation" TextColor="{DynamicResource TextColor}" FontSize="11" FontAttributes="Bold" />
+                                                <Label Text="{Binding StatusText}" TextColor="{DynamicResource AccentColor}" FontSize="9" FontAttributes="Bold" />
+                                            </VerticalStackLayout>
+
+                                            <Button Grid.Column="3" Text="{Binding ModeIcon}" FontSize="11" BackgroundColor="{DynamicResource BorderColor}" TextColor="{DynamicResource TextColor}" Padding="5,0" HeightRequest="28" WidthRequest="40" CornerRadius="4" VerticalOptions="Center" Clicked="OnToggleItemModeClicked" BindingContext="{Binding .}" ToolTipProperties.Text="İndirme Türünü Değiştir"/>
+                                            <Button Grid.Column="4" Text="💬" FontSize="11" BackgroundColor="{DynamicResource BorderColor}" TextColor="{DynamicResource TextColor}" Padding="5,0" HeightRequest="28" WidthRequest="30" CornerRadius="4" VerticalOptions="Center" Clicked="OnFetchSubtitleClicked" BindingContext="{Binding .}" ToolTipProperties.Text="Altyazı Seç"/>
+                                            <Button Grid.Column="5" Text="⚙️" FontSize="11" BackgroundColor="{DynamicResource BorderColor}" TextColor="{DynamicResource TextColor}" Padding="5,0" HeightRequest="28" WidthRequest="30" CornerRadius="4" VerticalOptions="Center" Clicked="OnFetchItemFormatClicked" BindingContext="{Binding .}" ToolTipProperties.Text="Video Formatı Seç"/>
                                         </Grid>
                                     </DataTemplate>
                                 </CollectionView.ItemTemplate>
@@ -217,66 +239,74 @@
                 </VerticalStackLayout>
             </Border>
 
-            <!-- BİRLEŞİK, GENİŞ VE FERAH KONTROL PANELİ -->
-            <Border BackgroundColor="{DynamicResource PanelBgColor}" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" Padding="15">
+            <!-- BİRLEŞİK KOMPAKT KONTROL PANELİ (DİNAMİK KİLİTLENEBİLİR) -->
+            <Border x:Name="FormatQualityPanel" BackgroundColor="{DynamicResource PanelBgColor}" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" Padding="12">
                 <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="12" />
+                    <RoundRectangle CornerRadius="10" />
                 </Border.StrokeShape>
-                <VerticalStackLayout Spacing="15">
+                <VerticalStackLayout Spacing="10">
 
-                    <!-- 1. Satır: Format ve Kalite Yanyana (Ferah Picker) -->
-                    <Grid ColumnDefinitions="Auto, *" ColumnSpacing="15" VerticalOptions="Center">
+                    <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10" VerticalOptions="Center">
                         <Border BackgroundColor="{DynamicResource EntryBgColor}" Stroke="{DynamicResource BorderColor}" StrokeThickness="1">
                             <Border.StrokeShape>
-                                <RoundRectangle CornerRadius="8"/>
+                                <RoundRectangle CornerRadius="6"/>
                             </Border.StrokeShape>
-                            <HorizontalStackLayout Spacing="5" Padding="5,0">
-                                <RadioButton x:Name="RadioMp3" Content="🎵 MP3" IsChecked="True" TextColor="{DynamicResource TextColor}" FontSize="13" CheckedChanged="OnFormatChanged" VerticalOptions="Center"/>
-                                <RadioButton x:Name="RadioMp4" Content="🎬 MP4" TextColor="{DynamicResource TextColor}" FontSize="13" CheckedChanged="OnFormatChanged" VerticalOptions="Center"/>
+                            <HorizontalStackLayout Spacing="2" Padding="5,0">
+                                <RadioButton x:Name="RadioMp3" Content="🎵 Genel MP3" IsChecked="True" TextColor="{DynamicResource TextColor}" FontSize="12" CheckedChanged="OnFormatChanged" VerticalOptions="Center"/>
+                                <RadioButton x:Name="RadioMp4" Content="🎬 Genel MP4" TextColor="{DynamicResource TextColor}" FontSize="12" CheckedChanged="OnFormatChanged" VerticalOptions="Center"/>
                             </HorizontalStackLayout>
                         </Border>
-                        <!-- YENİ: Geniş Kalite Kutusu -->
-                        <Picker x:Name="QualityPicker" Grid.Column="1" BackgroundColor="{DynamicResource EntryBgColor}" TextColor="{DynamicResource TextColor}" FontSize="14" Title="Kalite Seçin" HorizontalOptions="FillAndExpand"/>
+                        <Picker x:Name="QualityPicker" Grid.Column="1" BackgroundColor="{DynamicResource EntryBgColor}" TextColor="{DynamicResource TextColor}" FontSize="12" HorizontalOptions="Fill" HeightRequest="42"/>
                     </Grid>
+                </VerticalStackLayout>
+            </Border>
 
-                    <BoxView HeightRequest="1" Color="{DynamicResource BorderColor}" />
 
-                    <!-- 2. Satır: Konum Seçimi -->
-                    <Grid ColumnDefinitions="Auto, *, Auto, Auto" ColumnSpacing="8" VerticalOptions="Center">
-                        <Label Text="💾 Konum:" TextColor="{DynamicResource TextColor}" FontSize="13" FontAttributes="Bold" VerticalOptions="Center" />
-                        <Entry x:Name="FolderEntry" Grid.Column="1" IsReadOnly="True" BackgroundColor="{DynamicResource EntryBgColor}" TextColor="{DynamicResource SubTextColor}" FontSize="12" HeightRequest="38" />
-                        <Button Grid.Column="2" Text="📂 Seç" BackgroundColor="{DynamicResource BorderColor}" TextColor="{DynamicResource TextColor}" CornerRadius="8" HeightRequest="38" Clicked="OnSelectFolderClicked" FontSize="12" Padding="10,0"/>
-                        <Button Grid.Column="3" Text="Aç" BackgroundColor="{DynamicResource EntryBgColor}" TextColor="{DynamicResource TextColor}" CornerRadius="8" HeightRequest="38" Clicked="OnOpenFolderClicked" FontSize="12" Padding="10,0"/>
+
+            <Border x:Name="FoolderPlacePanel" BackgroundColor="{DynamicResource PanelBgColor}" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" Padding="12">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="10" />
+                </Border.StrokeShape>
+                <VerticalStackLayout Spacing="10">
+                    <Grid ColumnDefinitions="Auto, *, Auto, Auto" ColumnSpacing="6" VerticalOptions="Center">
+                        <Label Text="💾 Konum:" TextColor="{DynamicResource TextColor}" FontSize="12" FontAttributes="Bold" VerticalOptions="Center" />
+                        <Entry x:Name="FolderEntry" Grid.Column="1" IsReadOnly="True" BackgroundColor="{DynamicResource EntryBgColor}" TextColor="{DynamicResource SubTextColor}" FontSize="11" HeightRequest="36" />
+                        <Button Grid.Column="2" Text="📂 Seç" BackgroundColor="{DynamicResource BorderColor}" TextColor="{DynamicResource TextColor}" CornerRadius="6" HeightRequest="36" Clicked="OnSelectFolderClicked" FontSize="11" Padding="10,0"/>
+                        <Button Grid.Column="3" Text="Aç" BackgroundColor="{DynamicResource EntryBgColor}" TextColor="{DynamicResource TextColor}" CornerRadius="6" HeightRequest="36" Clicked="OnOpenFolderClicked" FontSize="11" Padding="10,0"/>
                     </Grid>
 
                 </VerticalStackLayout>
             </Border>
 
+
             <!-- BAŞLAT VE İPTAL BUTONLARI -->
-            <Grid ColumnDefinitions="*, Auto" ColumnSpacing="10" Margin="0,5,0,0">
+            <Grid ColumnDefinitions="*, Auto" ColumnSpacing="10" Margin="0,2,0,0">
                 <Button x:Name="DownloadBtn" Text="🚀 İNDİRMEYİ BAŞLAT" BackgroundColor="{DynamicResource AccentColor}" TextColor="White" 
-                        FontSize="16" FontAttributes="Bold" HeightRequest="50" CornerRadius="10" Clicked="OnDownloadClicked">
+                        FontSize="15" FontAttributes="Bold" HeightRequest="45" CornerRadius="8" Clicked="OnDownloadClicked">
                     <Button.Shadow>
-                        <Shadow Brush="{DynamicResource AccentColor}" Offset="0,3" Radius="10" Opacity="0.4" />
+                        <Shadow Brush="{DynamicResource AccentColor}" Offset="0,3" Radius="8" Opacity="0.4" />
                     </Button.Shadow>
                 </Button>
                 <Button x:Name="CancelBtn" Grid.Column="1" Text="✖ İptal Et" BackgroundColor="#444444" TextColor="White" 
-                        FontSize="14" FontAttributes="Bold" HeightRequest="50" CornerRadius="10" Clicked="OnCancelClicked" IsVisible="False" Padding="20,0" />
+                        FontSize="13" FontAttributes="Bold" HeightRequest="45" CornerRadius="8" Clicked="OnCancelClicked" IsVisible="False" Padding="15,0" />
             </Grid>
 
-            <!-- İNDİRME İZLEME PANELİ -->
+            <!-- İNDİRME İZLEME PANELİ (YENİ TOPLAM SAYACA SAHİP) -->
             <Border x:Name="ProgressContainer" IsVisible="False" BackgroundColor="{DynamicResource CardBgColor}" Stroke="{DynamicResource AccentColor}" StrokeThickness="1" Padding="15">
                 <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="12" />
+                    <RoundRectangle CornerRadius="10" />
                 </Border.StrokeShape>
-                <VerticalStackLayout Spacing="10">
-                    <Label x:Name="CurrentFileLabel" Text="Bağlantı Kuruluyor..." TextColor="{DynamicResource TextColor}" FontSize="13" FontAttributes="Bold" MaxLines="1" LineBreakMode="TailTruncation" HorizontalOptions="Center" />
-                    <ProgressBar x:Name="DownloadProgressBar" Progress="0" ProgressColor="{DynamicResource AccentColor}" HeightRequest="10" />
-                    <Label x:Name="ProgressText" Text="Lütfen bekleyin..." TextColor="{DynamicResource SubTextColor}" FontSize="12" FontAttributes="Bold" HorizontalOptions="Center" />
+                <VerticalStackLayout Spacing="8">
+                    <!-- YENİ: GENEL PLAYLIST İLERLEME SAYACI -->
+                    <Label x:Name="TotalProgressText" IsVisible="False" Text="📁 Toplam İlerleme: --" TextColor="{DynamicResource AccentColor}" FontSize="13" FontAttributes="Bold" HorizontalOptions="Center" />
+
+                    <Label x:Name="CurrentFileLabel" Text="Bağlantı Kuruluyor..." TextColor="{DynamicResource TextColor}" FontSize="12" FontAttributes="Bold" MaxLines="1" LineBreakMode="TailTruncation" HorizontalOptions="Center" />
+                    <ProgressBar x:Name="DownloadProgressBar" Progress="0" ProgressColor="{DynamicResource AccentColor}" HeightRequest="8" />
+                    <Label x:Name="ProgressText" Text="Lütfen bekleyin..." TextColor="{DynamicResource SubTextColor}" FontSize="11" FontAttributes="Bold" HorizontalOptions="Center" />
                 </VerticalStackLayout>
             </Border>
 
-            <Label x:Name="StatusLabel" Text="Sistem hazır..." TextColor="{DynamicResource SubTextColor}" HorizontalOptions="Center" FontSize="11" Margin="0,0,0,10"/>
+            <Label x:Name="StatusLabel" Text="Sistem hazır..." TextColor="{DynamicResource SubTextColor}" HorizontalOptions="Center" FontSize="10" Margin="0,0,0,5"/>
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>
