@@ -89,6 +89,11 @@ public partial class MainPage : ContentPage
 
     [DllImport("user32.dll")]
     private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    // YENİ: Uygulamayı zorla öne getiren agresif Windows komutu eklendi!
+    [DllImport("user32.dll")]
+    private static extern void SwitchToThisWindow(IntPtr hWnd, bool fAltTab);
+
     private const int SW_RESTORE = 9;
 #endif
 
@@ -310,19 +315,23 @@ public partial class MainPage : ContentPage
         if (Regex.IsMatch(text, ytRegex, RegexOptions.IgnoreCase))
         {
             if (text == _lastPastedLink) return;
-            _lastPastedLink = text;
+            _lastPastedLink = text; // Sonsuz döngüyü önler
 
             MainThread.BeginInvokeOnMainThread(async () =>
             {
                 if (Preferences.Default.Get("BringToFront", true))
                 {
 #if WINDOWS
-                    var window = App.Current?.Windows?.FirstOrDefault()?.Handler?.PlatformView as Microsoft.UI.Xaml.Window;
-                    if (window != null)
+                    // YENİLİK: Uygulamayı bulma motoru güçlendirildi ve doğrudan sayfaya bağlandı
+                    var platformWindow = this.Window?.Handler?.PlatformView as Microsoft.UI.Xaml.Window
+                                      ?? Application.Current?.Windows.FirstOrDefault()?.Handler?.PlatformView as Microsoft.UI.Xaml.Window;
+
+                    if (platformWindow != null)
                     {
-                        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+                        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(platformWindow);
                         ShowWindow(hwnd, SW_RESTORE);
                         SetForegroundWindow(hwnd);
+                        SwitchToThisWindow(hwnd, true); // Görev çubuğundan zorla yukarı çeker!
                     }
 #endif
                 }
@@ -419,7 +428,6 @@ public partial class MainPage : ContentPage
         _currentVideoUrl = link;
         bool isPlaylist = link.Contains("list=");
 
-        // YENİLİK: Eski videonun hafızasını tamamen sıfırla ki isim çakışması olmasın!
         _singleCustomFormatId = "";
         _singleCustomFormatName = "";
         _singleSelectedSubtitle = "";
@@ -431,7 +439,6 @@ public partial class MainPage : ContentPage
             SingleStatusLabel.Text = "";
             PlaylistCountLabel.Text = "Taranıyor...";
 
-            // Format kutusunu tekrar aktif et
             FormatQualityPanel.IsEnabled = true;
             FormatQualityPanel.Opacity = 1.0;
             TotalProgressText.IsVisible = false;
@@ -623,7 +630,6 @@ public partial class MainPage : ContentPage
 
         if (action == "Kapat" || string.IsNullOrEmpty(action)) return;
 
-        // YENİLİK: Artık (Oto) yazısını silmiyoruz, indirme motoru ona göre auto-subs komutunu seçecek.
         string selCode = action == "Sıfırla (İptal)" ? "" : action;
 
         if (pItem != null)
@@ -744,9 +750,8 @@ public partial class MainPage : ContentPage
         if (pItem != null)
         {
             pItem.CustomFormatId = targetFormatId;
-            pItem.CustomFormatName = displayStatus; // Hafızaya al
+            pItem.CustomFormatName = displayStatus;
 
-            // YENİLİK: Playlistte özel video formatı seçtiğinde, şarkıyı otomatik "Video" moduna geçir!
             if (!string.IsNullOrEmpty(targetFormatId)) pItem.IsAudioMode = false;
 
             pItem.RefreshStatus();
@@ -754,14 +759,13 @@ public partial class MainPage : ContentPage
         else
         {
             _singleCustomFormatId = targetFormatId;
-            _singleCustomFormatName = displayStatus; // Hafızaya al
+            _singleCustomFormatName = displayStatus;
             string existingSub = string.IsNullOrEmpty(_singleSelectedSubtitle) ? "" : $"[Altyazı: {_singleSelectedSubtitle}] ";
             SingleStatusLabel.Text = $"{existingSub}{displayStatus}";
 
-            // YENİLİK: Tekli videoda özel format seçildiğinde Genel Kalite Paneli KİLİTLENİR VE KARARTILIR (Çakışma olmaz)
             if (!string.IsNullOrEmpty(targetFormatId))
             {
-                RadioMp4.IsChecked = true; // Radyo butonunu MP4'e otomatik geçir
+                RadioMp4.IsChecked = true;
                 FormatQualityPanel.IsEnabled = false;
                 FormatQualityPanel.Opacity = 0.5;
             }
@@ -851,7 +855,6 @@ public partial class MainPage : ContentPage
                     TotalProgressText.Text = $"📁 Toplam İlerleme: {current - 1} / {total} Video Tamamlandı";
                 });
 
-                // ÖNEMLİ: Özel format varsa ses modunu pas geçiyoruz (Zaten video formatıdır)
                 bool processAudio = item.IsAudioMode;
                 if (!string.IsNullOrEmpty(item.CustomFormatId)) processAudio = false;
 
@@ -866,7 +869,6 @@ public partial class MainPage : ContentPage
         }
         else
         {
-            // TEKLİ VİDEO İNDİRME
             bool processAudio = isGlobalMp3;
             if (!string.IsNullOrEmpty(_singleCustomFormatId)) processAudio = false;
 
@@ -899,7 +901,6 @@ public partial class MainPage : ContentPage
             string fastArgs = "";
             string fileSuffix = "";
 
-            // YENİLİK: İsim çakışmalarına kesin çözüm! Özel formattan kalite çekilip Format ID'si eklenir. (Örn: 144p_133)
             bool isCustomFormat = !string.IsNullOrEmpty(customFormatId);
 
             if (isCustomFormat)
@@ -927,18 +928,16 @@ public partial class MainPage : ContentPage
 
             string modeArgs = "";
             string subtitleArgs = "";
-            string mergeFmt = "mp4"; // Varsayılan video birleştirme formatı
+            string mergeFmt = "mp4";
 
-            // YENİLİK: KUSURSUZ ALTYAZI GÖMME MOTORU
             if (!string.IsNullOrEmpty(subtitleLang) && !isMp3)
             {
                 bool isAuto = subtitleLang.Contains("(Oto)");
                 string cleanLang = subtitleLang.Replace(" (Oto)", "").Trim();
 
                 string subType = isAuto ? "--write-auto-subs" : "--write-subs";
-                // convert-subs srt : Otomatik oluşturulan VTT formatını bozmadan SRT'ye çevirip gömer
                 subtitleArgs = $"{subType} --sub-langs \"{cleanLang}\" --convert-subs srt --embed-subs --compat-options no-keep-subs ";
-                mergeFmt = "mkv"; // MKV, altyazıları kusursuz destekler
+                mergeFmt = "mkv";
             }
 
             if (isMp3)
@@ -972,7 +971,7 @@ public partial class MainPage : ContentPage
                         1 => "vcodec^=avc1", // H264
                         2 => "vcodec^=vp9",  // VP9
                         3 => "vcodec^=av01", // AV1
-                        _ => "" // Otomatik
+                        _ => ""
                     };
                     string cStr = string.IsNullOrEmpty(cRule) ? "" : $"[{cRule}]";
 
@@ -1010,7 +1009,7 @@ public partial class MainPage : ContentPage
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
-                StandardOutputEncoding = System.Text.Encoding.UTF8 // TÜRKÇE KARAKTERLER İÇİN KESİN ÇÖZÜM
+                StandardOutputEncoding = System.Text.Encoding.UTF8
             };
 
             processInfo.EnvironmentVariables["PYTHONUTF8"] = "1";
@@ -1019,9 +1018,10 @@ public partial class MainPage : ContentPage
             _currentDownloadProcess = new Process { StartInfo = processInfo };
 
             var regexProgress = new Regex(@"\[download\]\s+([\d.]+)%(?:.*?at\s+([\d.\w]+/?s))?(?:.*?ETA\s+([\d:]+))?");
-            string currentIcon = isMp3 ? "🎵" : "🎬";
+            var regexDest = new Regex(@"\[download\] Destination:\s+(.+)$");
+            var regexAlready = new Regex(@"\[download\]\s+(.+?)\s+has already been downloaded");
 
-            // YENİLİK: C# içinden oluşturulan temiz isim (Konsol bozulmasına karşı korumalı)
+            string currentIcon = isMp3 ? "🎵" : "🎬";
             string displayTitle = isPlaylist ? $"{currentIndex:00} - {videoTitle}" : videoTitle;
             MainThread.BeginInvokeOnMainThread(() => CurrentFileLabel.Text = $"⬇ {displayTitle}");
 
@@ -1032,9 +1032,18 @@ public partial class MainPage : ContentPage
 
                 if (!string.IsNullOrEmpty(outputLine))
                 {
-                    if (outputLine.Contains("has already been downloaded"))
+                    var destMatch = regexDest.Match(outputLine);
+                    if (destMatch.Success)
                     {
-                        MainThread.BeginInvokeOnMainThread(() => CurrentFileLabel.Text = $"✅ Mevcut: {displayTitle}");
+                        string fileName = Path.GetFileName(destMatch.Groups[1].Value);
+                        MainThread.BeginInvokeOnMainThread(() => CurrentFileLabel.Text = $"⬇ {fileName}");
+                    }
+
+                    var alreadyMatch = regexAlready.Match(outputLine);
+                    if (alreadyMatch.Success)
+                    {
+                        string fileName = Path.GetFileName(alreadyMatch.Groups[1].Value);
+                        MainThread.BeginInvokeOnMainThread(() => CurrentFileLabel.Text = $"✅ Mevcut: {fileName}");
                     }
 
                     var match = regexProgress.Match(outputLine);
